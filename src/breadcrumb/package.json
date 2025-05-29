@@ -1,11 +1,11 @@
 {
-  "name": "@vltpkg/graph",
-  "description": "A library that helps understanding & expressing what happens on an install",
+  "name": "@vltpkg/breadcrumb",
+  "description": "Query syntax subset that allows for defining logical paths within a graph.",
   "version": "0.0.0-13",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/vltpkg/vltpkg.git",
-    "directory": "src/graph"
+    "directory": "src/breadcrumb"
   },
   "tshy": {
     "selfLink": false,
@@ -15,37 +15,26 @@
     ],
     "exports": {
       "./package.json": "./package.json",
-      ".": "./src/index.ts",
-      "./browser": "./src/browser.ts"
+      ".": "./src/index.ts"
     }
   },
   "dependencies": {
-    "@vltpkg/cmd-shim": "workspace:*",
     "@vltpkg/dep-id": "workspace:*",
     "@vltpkg/error-cause": "workspace:*",
-    "@vltpkg/fast-split": "workspace:*",
-    "@vltpkg/output": "workspace:*",
-    "@vltpkg/package-info": "workspace:*",
-    "@vltpkg/package-json": "workspace:*",
-    "@vltpkg/pick-manifest": "workspace:*",
-    "@vltpkg/rollback-remove": "workspace:*",
-    "@vltpkg/run": "workspace:*",
-    "@vltpkg/satisfies": "workspace:*",
-    "@vltpkg/spec": "workspace:*",
+    "@vltpkg/graph": "workspace:*",
+    "@vltpkg/security-archive": "workspace:*",
+    "@vltpkg/semver": "workspace:*",
     "@vltpkg/types": "workspace:*",
-    "@vltpkg/workspaces": "workspace:*",
-    "graph-run": "catalog:",
-    "path-scurry": "catalog:",
-    "polite-json": "catalog:",
-    "promise-call-limit": "catalog:"
+    "p-retry": "catalog:",
+    "postcss-selector-parser": "^7.1.0"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
     "@types/node": "catalog:",
+    "@vltpkg/spec": "workspace:*",
     "eslint": "catalog:",
     "prettier": "catalog:",
     "tap": "catalog:",
-    "tar": "catalog:",
     "tshy": "catalog:",
     "typedoc": "catalog:",
     "typescript": "catalog:",
@@ -78,11 +67,6 @@
     ".": {
       "import": {
         "default": "./src/index.ts"
-      }
-    },
-    "./browser": {
-      "import": {
-        "default": "./src/browser.ts"
       }
     }
   },

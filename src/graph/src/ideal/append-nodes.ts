@@ -12,6 +12,8 @@ import type { Dependency } from '../dependencies.ts'
 import type { Graph } from '../graph.ts'
 import type { Node } from '../node.ts'
 import { removeOptionalSubgraph } from '../remove-optional-subgraph.ts'
+import {GraphModifier} from '../modifiers.ts'
+import type {ModifierActiveEntry} from '../modifiers.ts'
 
 type FileTypeInfo = {
   id: DepID
@@ -74,17 +76,30 @@ export const appendNodes = async (
   scurry: PathScurry,
   options: SpecOptions,
   seen: Set<DepID>,
+  modifiers: GraphModifier | undefined,
+  modifiersRef?: Map<string, ModifierActiveEntry>,
 ) => {
   /* c8 ignore next */
   if (seen.has(fromNode.id)) return
+  //console.log('looking up:', fromNode.id)
+  //console.log('add:', add.keys())
+  //console.log('add values:', [...add.values()].map(d => d.spec.name))
+  //console.log('deps:', deps.map(d => d.spec.name))
   seen.add(fromNode.id)
 
   await Promise.all(
     deps.map(async ({ spec, type }) => {
+      //console.log('dep:', spec.name)
       // see if there's a satisfying node in the graph currently
       const fileTypeInfo = getFileTypeInfo(spec, fromNode, scurry)
+      const activeModifier = modifiersRef?.get(spec.name)
+      const queryModifier = activeModifier?.modifier?.query
+      if (activeModifier && activeModifier.interactiveBreadcrumb.current === activeModifier.modifier.breadcrumb.last && 'spec' in activeModifier.modifier) {
+        spec = activeModifier.modifier.spec
+      }
+      //console.log('queryModifier', queryModifier)
       const existingNode = graph.findResolution(spec, fromNode)
-      if (existingNode) {
+      if (existingNode && !queryModifier) {
         graph.addEdge(type, spec, fromNode, existingNode)
         return
       }
@@ -144,7 +159,11 @@ export const appendNodes = async (
         spec,
         mani,
         fileTypeInfo?.id,
+        queryModifier,
       )
+      if (node?.name === '@types/react-dom' || node?.name === '@types/react') {
+        console.log(`PLACED ${node.name} package`)
+      }
 
       /* c8 ignore start - not possible, already ensured manifest */
       if (!node) {
@@ -154,6 +173,10 @@ export const appendNodes = async (
         })
       }
       /* c8 ignore stop */
+
+      if (queryModifier && modifiersRef) {
+        modifiers?.updateActiveEntry(node, modifiersRef.get(spec.name))
+      }
 
       if (fileTypeInfo?.path && fileTypeInfo.isDirectory) {
         node.location = fileTypeInfo.path
@@ -173,6 +196,7 @@ export const appendNodes = async (
       )
 
       const nextDeps: Dependency[] = []
+      const nextModifierRefs = new Map<string, ModifierActiveEntry>()
 
       for (const depTypeName of longDependencyTypes) {
         const depRecord: Record<string, string> | undefined =
@@ -188,8 +212,18 @@ export const appendNodes = async (
                 registry: spec.registry,
               }),
             })
+            const modifierRef = modifiers?.tryNewDependency(node, name)
+            // TODO: needs to support node replacements (package extensions)
+            if (modifierRef && 'spec' in modifierRef.modifier) {
+              nextModifierRefs.set(name, modifierRef)
+            }
           }
         }
+      }
+
+      if (node?.name === '@types/react-dom' || node?.name === '@types/react') {
+        console.log('nextDeps', nextDeps.map(d => d.spec).join(', '))
+        console.log('nextModifierRefs', [...nextModifierRefs.values()].map(mod => mod.modifier.query).join(', '))
       }
 
       if (nextDeps.length) {
@@ -203,6 +237,8 @@ export const appendNodes = async (
             scurry,
             options,
             seen,
+            modifiers,
+            nextModifierRefs,
           ),
         )
       }

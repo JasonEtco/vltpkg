@@ -1,6 +1,7 @@
 import { error } from '@vltpkg/error-cause'
-import { parse, Range, satisfies, Version } from '@vltpkg/semver'
+import { parse, Range, satisfies, Version, isRange } from '@vltpkg/semver'
 import { Spec } from '@vltpkg/spec'
+import {isSpec} from '@vltpkg/spec/browser'
 import type {
   Manifest,
   Packument,
@@ -140,13 +141,13 @@ export function pickManifest<T extends Packumentish>(
 
   const time = before && verTimes ? +new Date(before) : Infinity
   let range: Range | undefined = undefined
-  let spec: Spec | undefined = undefined
+  let spec: Spec | Range | undefined = undefined
   if (typeof wanted === 'object') {
-    if (wanted instanceof Spec) {
+    if (isSpec(wanted)) {
       const f = wanted.final
       range = f.range
       spec = f
-    } else {
+    } else if (isRange(wanted)) {
       range = wanted
     }
   } else {

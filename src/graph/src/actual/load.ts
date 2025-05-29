@@ -1,4 +1,4 @@
-import { asDepID, hydrate, joinDepIDTuple } from '@vltpkg/dep-id'
+import { asDepID, decode, hydrate, joinDepIDTuple, splitDepID } from '@vltpkg/dep-id'
 import type { DepID } from '@vltpkg/dep-id'
 import type { PackageJson } from '@vltpkg/package-json'
 import { Spec } from '@vltpkg/spec'
@@ -63,11 +63,13 @@ const isPathBasedType = (
 ): type is 'file' | 'workspace' => pathBasedType.has(type)
 const getPathBasedId = (
   spec: Spec,
-  path: string,
+  path: Path,
 ): DepID | undefined =>
   isPathBasedType(spec.type) ?
-    joinDepIDTuple([spec.type, path])
-  : undefined
+    joinDepIDTuple([spec.type, path.relativePosix()])
+  : spec.type === 'registry' ?
+    findDepID(path)
+    : undefined
 
 /**
  * Retrieve the {@link DepID} for a given package from its location.
@@ -273,13 +275,15 @@ const parseDir = (
         ...options,
         registry: fromNode.registry,
       })
-      const maybeId = getPathBasedId(spec, realpath.relativePosix())
+      const maybeId = getPathBasedId(spec, realpath)
+      const [,,,queryModifier] = maybeId ? splitDepID(maybeId) : []
       node = graph.placePackage(
         fromNode,
         depType,
         spec,
         mani,
         maybeId,
+        queryModifier ? decode(queryModifier) : undefined,
       )
     }
 

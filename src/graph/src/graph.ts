@@ -157,7 +157,7 @@ export class Graph implements GraphLike {
   }
 
   /**
-   * Delete all nodes that are unreachable from the importers.
+   * Delete all nodes and edges that are unreachable from the importers.
    * The collection of deleted nodes is returned.
    *
    * NOTE: This can be extremely slow for large graphs, and is almost always
@@ -167,13 +167,25 @@ export class Graph implements GraphLike {
    */
   gc() {
     const { nodes } = this
+    this.edges.clear()
     this.nodes = new Map()
     const marked = new Set(this.importers)
     for (const imp of marked) {
       // don't delete the importer!
       nodes.delete(imp.id)
       this.nodes.set(imp.id, imp)
-      for (const { to } of imp.edgesOut.values()) {
+      for (const edge of imp.edgesOut.values()) {
+        if (imp.mainImporter) {
+          console.log('checking edge', edge, 'from', imp.id)
+        }
+        this.edges.add(edge)
+        const { to } = edge
+        if (!to) {
+          console.log('edge has no destination', edge)
+        }
+        if (to && marked.has(to)) {
+          console.log('node has already been marked', to.id)
+        }
         if (!to || marked.has(to)) continue
         marked.add(to)
         nodes.delete(to.id)
@@ -181,6 +193,7 @@ export class Graph implements GraphLike {
       }
     }
     for (const node of nodes.values()) {
+      console.log('removing node', node.id)
       this.removeNode(node)
     }
     return nodes
@@ -197,6 +210,10 @@ export class Graph implements GraphLike {
     from: NodeLike,
     to?: NodeLike,
   ) {
+    
+    if (spec.name === '@types/react-dom' || spec.name === '@types/react') {
+      console.log('type', type, 'spec', String(spec), 'from', from.id, 'to', to?.id)
+    }
     // fix any nameless spec
     if (spec.name === '(unknown)') {
       if (to) {
@@ -211,14 +228,29 @@ export class Graph implements GraphLike {
     }
     const existing = from.edgesOut.get(spec.name)
     if (existing) {
+      if (spec.name === '@types/react-dom' || spec.name === '@types/react') {
+        console.log('existing edge:', existing, 'type:', type, 'spec:', String(spec))
+      }
       const edge = existing as Edge
       if (
         edge.type === type &&
         edge.spec.bareSpec === spec.bareSpec
       ) {
+        if (spec.name === '@types/react-dom' || spec.name === '@types/react') {
+          console.log('it matches!')
+        }
         if (to && to !== edge.to) {
+          if (spec.name === '@types/react-dom' || spec.name === '@types/react') {
+            console.log('oh look, it\'s not pointing to the same node!')
+          }
+          // removes this given edge form the current destination
+          edge.to?.edgesIn.delete(edge)
+          // now swap the destination to the new one
           edge.to = to as Node
           edge.to.edgesIn.add(edge)
+        }
+        if (spec.name === '@types/react-dom' || spec.name === '@types/react') {
+          console.log('this is the final edge:', edge)
         }
         return edge
       }
@@ -230,6 +262,9 @@ export class Graph implements GraphLike {
       spec,
       to as Node | undefined,
     )
+      if (spec.name === '@types/react-dom' || spec.name === '@types/react') {
+        console.log('new edge:', edgeOut, 'type:', type, 'spec:', String(spec))
+      }
     this.edges.add(edgeOut)
     return edgeOut
   }
@@ -318,6 +353,7 @@ export class Graph implements GraphLike {
     spec: Spec,
     manifest?: Manifest,
     id?: DepID,
+    queryModifier?: string,
   ) {
     // if no manifest is available, then create an edge that has no
     // reference to any other node, representing a missing dependency
@@ -335,7 +371,9 @@ export class Graph implements GraphLike {
         depType === 'peerOptional',
     }
 
-    const depId = id || (manifest && getId(spec, manifest))
+    //console.log('queryModifier', queryModifier)
+    const depId = id || (manifest && getId(spec, manifest, queryModifier))
+    // console.log('place package - depId:', depId)
 
     /* c8 ignore start - should not be possible */
     if (!depId) {
@@ -349,6 +387,9 @@ export class Graph implements GraphLike {
     // if a node for this package is already represented by a node
     // in the graph, then just creates a new edge to that node
     const toFoundNode = this.nodes.get(depId)
+    if ((toFoundNode?.name === '@types/react-dom' || toFoundNode?.name === '@types/react')) {
+      console.log('toFoundNode:', toFoundNode?.id)
+    }
     if (toFoundNode) {
       this.addEdge(depType, spec, fromNode, toFoundNode)
       // the current only stays dev/optional if this dep lets it remain so
@@ -360,10 +401,19 @@ export class Graph implements GraphLike {
 
     // creates a new node and edges to its parent
     const toNode = this.addNode(depId, manifest, spec)
+    if (toNode.name === '@types/react-dom' || toNode.name === '@types/react') {
+      console.log('toNode:', toNode.id)
+    }
     toNode.registry = spec.registry
     toNode.dev = flags.dev
     toNode.optional = flags.optional
     this.addEdge(depType, spec, fromNode, toNode)
+
+    // TODO: figure out if this is the best place to have this set up
+    if (queryModifier) {
+      toNode.overridden = true
+      toNode.appliedModifier = queryModifier
+    }
     return toNode
   }
 

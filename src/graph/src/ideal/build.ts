@@ -10,6 +10,7 @@ import type { Graph } from '../graph.ts'
 import { load as loadVirtual } from '../lockfile/load.ts'
 import { buildIdealFromStartingGraph } from './build-ideal-from-starting-graph.ts'
 import type { DepID } from '@vltpkg/dep-id'
+import type { GraphModifier } from '../modifiers.ts'
 import { graphStep } from '@vltpkg/output'
 
 const getMap = <T extends Map<any, any>>(m?: T) =>
@@ -23,6 +24,12 @@ export type BuildIdealOptions = LoadActualOptions & {
    * represented by {@link DepID}.
    */
   add?: AddImportersDependenciesMap
+  /**
+   * A {@link GraphModifier} instance that holds information on how to
+   * modify the graph, replacing nodes and edges as defined in the
+   * project configuration.
+   */
+  modifiers?: GraphModifier
   /**
    * A `Map` object representing nodes to be removed from the ideal graph.
    * Each {@link DepID} key represents an importer node and the `Set` of
@@ -49,7 +56,7 @@ export const build = async (
 
   // Creates the shared instances that are going to be used
   // in both the loader methods and the build graph
-  const { packageInfo, packageJson, scurry, monorepo } = options
+  const { packageInfo, packageJson, scurry, modifiers, monorepo } = options
   const mainManifest =
     options.mainManifest ?? packageJson.read(options.projectRoot)
   let graph
@@ -70,6 +77,7 @@ export const build = async (
   const res = await buildIdealFromStartingGraph({
     ...options,
     scurry,
+    modifiers,
     add: getMap(options.add),
     graph,
     packageInfo,

@@ -51,6 +51,8 @@ export type NodeLike = {
   projectRoot: string
   dev: boolean
   optional: boolean
+  overridden: boolean
+  appliedModifier?: string
   toJSON: () => Pick<
     NodeLike,
     | 'id'

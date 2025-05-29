@@ -244,6 +244,16 @@ const not = async (state: ParserState) => {
   return state
 }
 
+const overridden = async (state: ParserState) => {
+  for (const node of state.partial.nodes) {
+    if (!node.overridden) {
+      removeNode(state, node)
+    }
+  }
+  removeDanglingEdges(state)
+  return state
+}
+
 /**
  * :project Pseudo-Class, matches only graph importers (e.g: the
  * root node along with any configured workspace)
@@ -311,7 +321,7 @@ const pseudoSelectors = new Map<string, ParserFn>(
     outdated,
     peer,
     published,
-    // TODO: overridden
+    overridden,
     private: privateParser,
     prod,
     project,

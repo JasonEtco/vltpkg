@@ -2,6 +2,7 @@ import type { Graph } from '@vltpkg/graph'
 import { commandUsage } from '../config/usage.ts'
 import type { CommandFn, CommandUsage } from '../index.ts'
 import { install } from '@vltpkg/graph'
+import { parseBreadcrumb } from '@vltpkg/query'
 import { parseAddArgs } from '../parse-add-remove-args.ts'
 import type { Views } from '../view.ts'
 import { InstallReporter } from './install/reporter.ts'
@@ -22,6 +23,9 @@ export const views = {
 export const command: CommandFn<Graph> = async conf => {
   const monorepo = conf.options.monorepo
   const { add } = parseAddArgs(conf, monorepo)
-  const { graph } = await install(conf.options, add)
+  const { graph } = await install({
+    ...conf.options,
+    parseBreadcrumb,
+  }, add)
   return graph
 }

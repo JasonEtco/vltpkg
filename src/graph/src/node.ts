@@ -30,6 +30,7 @@ export class Node implements NodeLike {
 
   #options: SpecOptions
   #location?: string
+  #resolvedLocation?: string
   #rawManifest?: Manifest
 
   #optional = false
@@ -141,6 +142,10 @@ export class Node implements NodeLike {
    */
   registry?: string
 
+  overridden: boolean = false
+
+  appliedModifier?: string
+
   /**
    * The name of the package represented by this node, this is usually
    * equivalent to `manifest.name` but in a few ways it may differ such as
@@ -192,7 +197,14 @@ export class Node implements NodeLike {
    * The resolved location of the node in the file system.
    */
   resolvedLocation(scurry: PathScurry): string {
-    return scurry.cwd.resolve(this.location).fullpath()
+    if (this.#resolvedLocation) {
+      return this.#resolvedLocation
+    }
+    if (this.name === 'eslint' || this.name === 'minimatch') {
+      console.log('node.resolvedLocation', scurry.cwd.resolve(this.location).fullpath())
+    }
+    this.#resolvedLocation = scurry.cwd.resolve(this.location).fullpath()
+    return this.#resolvedLocation
   }
 
   /**
@@ -327,6 +339,9 @@ export class Node implements NodeLike {
    * Add an edge from this node connecting it to a direct dependency.
    */
   addEdgesTo(type: DependencyTypeShort, spec: Spec, node?: Node) {
+    if (spec.name === '@types/react-dom' || spec.name === '@types/react') {
+      console.log('type', type, 'spec', String(spec), 'node', node?.id)
+    }
     const edge = new Edge(type, spec, this, node)
     node?.edgesIn.add(edge)
     this.edgesOut.set(spec.name, edge)
@@ -368,6 +383,8 @@ export class Node implements NodeLike {
       ...(this.confused ?
         { rawManifest: this.#rawManifest }
       : undefined),
+      overridden: this.overridden,
+      appliedModifier: this.appliedModifier,
     }
   }
 

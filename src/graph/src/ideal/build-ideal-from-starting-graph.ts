@@ -1,13 +1,21 @@
 import type { Graph } from '../graph.ts'
 import { getImporterSpecs } from './get-importer-specs.ts'
 import { addNodes } from './add-nodes.ts'
+import { checkNodes } from './check-nodes.ts'
 import type { AddNodesOptions } from './add-nodes.ts'
 import { removeNodes } from './remove-nodes.ts'
 import type { RemoveNodesOptions } from './remove-nodes.ts'
+import type { GraphModifier } from '../modifiers.ts'
 
 export type BuildIdealFromStartingGraphOptions = AddNodesOptions &
   RemoveNodesOptions & {
     projectRoot: string
+    /**
+     * A {@link GraphModifier} instance that holds information on how to
+     * modify the graph, replacing nodes and edges as defined in the
+     * project configuration.
+     */
+    modifiers?: GraphModifier
   }
 
 /**
@@ -52,6 +60,12 @@ export const buildIdealFromStartingGraph = async (
     }
   }
 
+  // check existing nodes for any modifiers that may need to be applied
+  await checkNodes({
+    ...options,
+    check: importerSpecs.check,
+  })
+
   // add nodes, fetching remote manifests for each dependency to be added
   await addNodes(options)
 
@@ -63,6 +77,11 @@ export const buildIdealFromStartingGraph = async (
   // removes any dependencies that are listed in the `remove` option
   removeNodes({ ...options, remove: importerSpecs.remove })
 
+  console.log(options.graph.mainImporter.edgesOut.keys())
+  console.log(options.graph.mainImporter.edgesOut.values())
+  //console.log(options.graph)
+
+  // TODO: it looks like gc is removing the forked node @types/react-dom
   options.graph.gc()
 
   return options.graph
